@@ -1,0 +1,45 @@
+-- Settings
+local Prediction = 0.165
+local TargetPart = "HumanoidRootPart"
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Get closest to mouse
+local function GetClosest()
+    local closest, shortest = nil, math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(TargetPart) then
+            local part = v.Character[TargetPart]
+            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position + part.Velocity * Prediction)
+            if onScreen then
+                local dist = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                if dist < shortest then
+                    closest = part
+                    shortest = dist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- Hook mouse target
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if self == Mouse and (key == "Target" or key == "Hit") then
+        local closest = GetClosest()
+        if closest then
+            if key == "Target" then
+                return closest
+            elseif key == "Hit" then
+                return CFrame.new(closest.Position + (closest.Velocity * Prediction))
+            end
+        end
+    end
+    return oldIndex(self, key)
+end))
